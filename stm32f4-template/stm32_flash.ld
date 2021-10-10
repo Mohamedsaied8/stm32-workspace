@@ -15,7 +15,7 @@
 **
 **  Environment : Atollic TrueSTUDIO(R)
 **
-**  Distribution: The file is distributed “as is,” without any warranty
+**  Distribution: The file is distributed ï¿½as is,ï¿½ without any warranty
 **                of any kind.
 **
 **  (c)Copyright Atollic AB.
@@ -30,10 +30,26 @@
 */
 
 /* Entry Point */
-ENTRY(Reset_Handler)
+/*ENTRY(Reset_Handler)*/
+/* Linker script for STM32F4xx ARM(R) Cortex(TM)-M4 MCU */
 
+INPUT(libc.a libm.a libgcc.a)
+
+OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
+OUTPUT_ARCH(arm)
+
+/* The beginning and end of the program ROM area */
+/* Set up a ROM area with a size of 32K - 4 */
+_rom_begin = 0x08000000;
+_rom_end   = 0x08007FFC;
+
+/* The beginning and end (i.e., the top) of the stack */
+/* Set up a stack with a size of 4K */
+_stack_begin = 0x20007000;
 /* Highest address of the user mode stack */
-_estack = 0x20020000;    /* end of 128K RAM on AHB bus*/
+_stack_end = 0x20020000;    /* end of 128K RAM on AHB bus*/
+
+__initial_stack_pointer = 0x20008000;
 
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0;      /* required amount of heap  */
@@ -51,17 +67,26 @@ MEMORY
 SECTIONS
 {
   /* The startup code goes first into FLASH */
+  . = 0x08000000;
+  . = ALIGN(4);
+
+  /* ISR vectors */
   .isr_vector :
   {
-    . = ALIGN(4);
-    KEEP(*(.isr_vector)) /* Startup code */
-    . = ALIGN(4);
-  } >FLASH
+    *(.isr_vector)
+    . = ALIGN(0x10);
+    KEEP(*(.isr_vector))
+  } > FLASH = 0xAAAA
+
 
   /* The program code and other data goes into FLASH */
   .text :
   {
+    _ctors_begin = .;
+    *(.init_array)
     . = ALIGN(4);
+    KEEP (*(SORT(.init_array)))
+    _ctors_end = .;
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
@@ -70,16 +95,9 @@ SECTIONS
     *(.glue_7t)        /* glue thumb to arm code */
 	*(.eh_frame)
 
-    KEEP (*(.init))
-    KEEP (*(.fini))
-
-    . = ALIGN(4);
-    _etext = .;        /* define a global symbols at end of code */
-    _exit = .;
   } >FLASH
 
-
-   .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
+ .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
     .ARM : {
     __exidx_start = .;
       *(.ARM.exidx*)
@@ -107,36 +125,42 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
 
+  
   /* used by the startup to initialize data */
   _sidata = .;
 
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : AT ( _sidata )
   {
+    _data_begin = .;
+    *(.data)
     . = ALIGN(4);
-    _sdata = .;        /* create a global symbol at data start */
-    *(.data)           /* .data sections */
-    *(.data*)          /* .data* sections */
-
+    KEEP (*(.data))
+    *(.data*)
     . = ALIGN(4);
-    _edata = .;        /* define a global symbol at data end */
+    KEEP (*(.data*))
+    _data_end = .;
   } >RAM
 
   /* Uninitialized data section */
   . = ALIGN(4);
   .bss :
   {
-    /* This is used by the startup in order to initialize the .bss secion */
-    _sbss = .;         /* define a global symbol at bss start */
-    __bss_start__ = _sbss;
+  /* This is used by the startup in order to initialize the .bss secion */
+     _bss_begin = .;  /* define a global symbol at bss start */
+     __bss_start__ = .;
+    *(.bss)
     *(.bss)
     *(.bss*)
     *(COMMON)
-
     . = ALIGN(4);
-    _ebss = .;         /* define a global symbol at bss end */
-    __bss_end__ = _ebss;
-  } >RAM
+    KEEP (*(.bss))
+    *(.bss*)
+    . = ALIGN(4);
+    KEEP (*(.bss*))
+    _bss_end = .; /* define a global symbol at bss end */
+    __bss_end__ = _bss_end;
+   } >RAM
 
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :
@@ -166,6 +190,8 @@ SECTIONS
     libm.a ( * )
     libgcc.a ( * )
   }
+  _rom_data_begin = LOADADDR(.data);
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
 }
+ 

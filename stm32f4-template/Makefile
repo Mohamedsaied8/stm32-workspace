@@ -12,6 +12,7 @@ TOOLS_DIR = 'C:/Program Files (x86)/GNU Arm Embedded Toolchain/9 2020-q2-update\
 
 # The tools we use
 CC      = $(TOOLS_DIR)/arm-none-eabi-gcc
+CXX      = $(TOOLS_DIR)/arm-none-eabi-g++
 OBJCOPY = $(TOOLS_DIR)/arm-none-eabi-objcopy
 GDB     = $(TOOLS_DIR)/arm-none-eabi-gdb
 AS      = $(TOOLS_DIR)/arm-none-eabi-as
@@ -43,6 +44,7 @@ CFLAGS  = -ggdb
 # please do not optimize anything because we are debugging
 CFLAGS += -O0
 CFLAGS += -Wall -Wextra -Warray-bounds
+CFLAGS += -specs=nosys.specs #in order to get rid of _sbrk linker error
 CFLAGS += $(AFLAGS)
 
 ## Linker options
@@ -68,13 +70,15 @@ STM_ROOT         =../STM32F4-Discovery_FW_V1.1.0
 MY_SRC_DIR       = ./src
 STM_SRC_DIR      = $(STM_ROOT)/Libraries/STM32F4xx_StdPeriph_Driver/src
 STM_SRC_DIR     += $(STM_ROOT)/Utilities/STM32F4-Discovery
-STM_STARTUP_DIR += $(STM_ROOT)/Libraries/CMSIS/ST/STM32F4xx/Source/Templates/TrueSTUDIO
+STM_STARTUP_DIR += ./startup
+#/Libraries/CMSIS/ST/STM32F4xx/Source/Templates/TrueSTUDIO
 
 # Tell make to look in that folder if it cannot find a source
 # in the current directory
 vpath %.c $(MY_SRC_DIR)
+vpath %.cpp $(MY_SRC_DIR)
 vpath %.c $(STM_SRC_DIR)
-vpath %.s $(STM_STARTUP_DIR)
+vpath %.cpp $(STM_STARTUP_DIR)
 
 
 ################################################################################
@@ -94,7 +98,7 @@ INC_DIRS += $(STM_ROOT)/Libraries/STM32F4xx_StdPeriph_Driver/inc
 ################################################################################
 
 # My source files
-SRCS   = main.c
+#SRCS   = main.c
 
 # Contains initialisation code and must be compiled into
 # our project. This file is in the current directory and
@@ -105,11 +109,12 @@ SRCS  += system_stm32f4xx.c
 # The assembly code in this file is the first one to be
 # executed. Normally you do not change this file.
 ASRC = startup_stm32f4xx.s
-
+CPP_SRCS = crt0.cpp crt0_init_ram.cpp crt1.cpp int_vect.cpp led.cpp main.cpp
 # in case we have to many sources and don't want
 # to compile all sources every time
 OBJS = $(SRCS:.c=.o)
-OBJS += $(ASRC:.s=.o)
+#OBJS += $(ASRC:.s=.o)
+OBJS +=$(CPP_SRCS:.cpp=.o)
 STM_SRC_DIR_C = stm32f4xx_gpio.c stm32f4xx_rcc.c
 OBJS += $(STM_SRC_DIR_C:.c=.o)
 
@@ -130,6 +135,11 @@ all: $(PROJ_NAME).elf
 	@mkdir -p ${TEMP_DIR}
 	@$(CC) -c -o $(TEMP_DIR)/$@ $(INCLUDE) $(DEFS) $(CFLAGS) $^
 
+%.o : %.cpp
+	@echo "[Compiling  ]  $^"
+	@mkdir -p ${TEMP_DIR}
+	@$(CXX) -c -o $(TEMP_DIR)/$@ $(INCLUDE) $(DEFS) $(CFLAGS) $^
+
 %.o : %.s
 	@echo "[Assembling ] $^"
 	@mkdir -p ${TEMP_DIR}
@@ -138,7 +148,7 @@ all: $(PROJ_NAME).elf
 $(PROJ_NAME).elf: $(OBJS)
 	@echo "[Linking    ]  $@"
 	@mkdir -p ${OUT_DIR}
-	@$(CC) $(CFLAGS) $(LFLAGS) $(foreach file, $^, $(TEMP_DIR)/$(file)) -o $(OUT_DIR)/$@
+	@$(CXX) $(CFLAGS) $(LFLAGS) $(foreach file, $^, $(TEMP_DIR)/$(file)) -o $(OUT_DIR)/$@
 	@$(OBJCOPY) -O ihex $(OUT_DIR)/$(PROJ_NAME).elf   $(OUT_DIR)/$(PROJ_NAME).hex
 	@$(OBJCOPY) -O binary $(OUT_DIR)/$(PROJ_NAME).elf $(OUT_DIR)/$(PROJ_NAME).bin
 
