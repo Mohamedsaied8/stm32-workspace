@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "STM32",
+            "includePath": [
+                "D:\\work\\stm32_workspace\\STM32F4-Discovery_FW_V1.1.0/**",
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F407xx",
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.18362.0",
+            "compilerPath": "C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\9 2020-q2-update\\bin\\arm-none-eabi-gcc.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
